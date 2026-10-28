@@ -1,0 +1,26 @@
+# docker compose up --build   ->  http://localhost:3000
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: threadfront
+      POSTGRES_PASSWORD: threadfront
+      POSTGRES_DB: threadfront
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U threadfront"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgres://threadfront:threadfront@db:5432/threadfront
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-to-a-long-random-string}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  pgdata:

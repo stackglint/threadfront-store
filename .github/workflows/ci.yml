@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Tests (embedded Postgres)
+        run: npm test
+      - run: npm run build
+
+  postgres:
+    # Same tests against a real PostgreSQL server, including the overlap constraint.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: threadfront, POSTGRES_PASSWORD: threadfront, POSTGRES_DB: threadfront }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U threadfront" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://threadfront:threadfront@localhost:5432/threadfront
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t threadfront .
